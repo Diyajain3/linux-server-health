@@ -1,68 +1,74 @@
-# Linux Server Health Check
+#!/bin/bash
 
-A simple Bash script that generates a quick health report for a Linux server — covering system info, memory, disk usage, network configuration, and open ports.
+# ===================================================
+# Linux Server Health Check Script
+# Author: Diya Jain
+# Description: Generates a quick health report covering
+#              system info, memory, disk, network, and ports
+# ===================================================
 
-## Features
+# Thresholds for warnings
+DISK_THRESHOLD=80
+MEM_THRESHOLD=80
 
-- **System Info** – hostname, uptime, and load average
-- **Memory Usage** – total, used, free, and available RAM/swap
-- **Disk Usage** – filesystem usage across all mounted volumes
-- **Network** – IP address details
-- **Open Ports** – all currently listening ports and services
+echo "===== LINUX SERVER HEALTH REPORT ====="
+echo "Generated on: $(date)"
+echo ""
 
-## Usage
+# ---------- Hostname ----------
+echo "Hostname:"
+hostname
+echo ""
 
-Clone the repository:
+# ---------- Uptime ----------
+echo "Uptime:"
+uptime
+echo ""
 
-\`\`\`bash
-git clone https://github.com/Diyajain3/linux-server-health.git
-cd linux-server-health
-\`\`\`
+# ---------- Memory ----------
+echo "Memory:"
+free -h
+echo ""
 
-Make the script executable and run it:
+# Check memory usage percentage
+MEM_USED_PERCENT=$(free | awk '/Mem:/ {printf("%.0f", $3/$2 * 100)}')
+if [ "$MEM_USED_PERCENT" -ge "$MEM_THRESHOLD" ]; then
+    echo "⚠️  WARNING: Memory usage is at ${MEM_USED_PERCENT}% (threshold: ${MEM_THRESHOLD}%)"
+    echo ""
+fi
 
-\`\`\`bash
+# ---------- Disk ----------
+echo "Disk:"
+df -h --output=source,size,used,avail,pcent,target | grep -v tmpfs
+echo ""
+
+# Check disk usage on root partition
+DISK_USED_PERCENT=$(df / | awk 'NR==2 {print $5}' | tr -d '%')
+if [ "$DISK_USED_PERCENT" -ge "$DISK_THRESHOLD" ]; then
+    echo "⚠️  WARNING: Root disk usage is at ${DISK_USED_PERCENT}% (threshold: ${DISK_THRESHOLD}%)"
+    echo ""
+fi
+
+# ---------- IP Address ----------
+echo "IP Address:"
+ip -4 addr show | grep inet
+echo ""
+
+# ---------- Listening Ports ----------
+echo "Listening Ports:"
+ss -tuln
+
+# To add this to your project
+nano scripts/health_check.sh
+
+# Paste the script, save (Ctrl+O, Enter, Ctrl+X), then make it executable
 chmod +x scripts/health_check.sh
 ./scripts/health_check.sh
-\`\`\`
 
-## Sample Output
+# Commit and push
+git add scripts/health_check.sh
+git commit -m "Add health check script with threshold warnings"
+git push
+echo ""
 
-\`\`\`
-===== LINUX SERVER HEALTH REPORT =====
-
-Hostname:
-  diyajain
-
-Uptime:
-  15:23:22 up 1:49, 1 user, load average: 0.85, 1.18, 1.03
-
-Memory:
-              total   used   free   shared  buff/cache  available
-  Mem:        1.7Gi   1.3Gi  312Mi  21Mi    261Mi       410Mi
-  Swap:       2.0Gi   821Mi  1.2Gi
-
-Disk:
-  Filesystem              Size  Used  Avail  Use%  Mounted on
-  /dev/mapper/rl_l0-root  16G   4.7G  12G    30%   /
-  /dev/sda2               2.0G  567M  1.4G   29%   /boot
-
-IP Address:
-  inet 10.0.2.15/24 brd 10.0.2.255 scope global dynamic noprefixroute enp0s3
-
-Listening Ports:
-  State    Local Address:Port
-  LISTEN   0.0.0.0:80
-  LISTEN   0.0.0.0:22
-  LISTEN   127.0.0.1:631
-\`\`\`
-
-## Requirements
-
-- Linux (tested on RHEL/CentOS-based systems)
-- Bash shell
-- Standard system utilities: `df`, `free`, `ss`, `uptime`, `ip`
-
-## License
-
-This project is open source and available under the [MIT License](LICENSE).
+echo "===== END OF REPORT ====="
